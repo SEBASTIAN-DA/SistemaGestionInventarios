@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify, session
 from dotenv import load_dotenv
 import bcrypt
 import os
-
 from flask_cors import CORS
 
 # ================== CARGAR VARIABLES DE ENTORNO ==================
@@ -10,22 +9,30 @@ load_dotenv()
 
 app = Flask(__name__)
 
-CORS(app,
-     supports_credentials=True,  # 🔹 Necesario para sesiones/cookies
-     origins=["http://localhost:4200"])
-
-# ================== BLUEPRINTS ==================
-from controllers.recovery_controller import recovery_bp
-from controllers.auth_controller import auth_bp
-app.register_blueprint(recovery_bp)
-app.register_blueprint(auth_bp)
+CORS(
+    app,
+    supports_credentials=True,
+    origins=["http://localhost:4200"]
+)
 
 # ================== CONFIGURACIÓN BASE DE DATOS ==================
 from config.db_config import init_mysql
 mysql = init_mysql(app)
 
+# 🔹 Adjuntar mysql al app para usar current_app.mysql en los Blueprints
+app.mysql = mysql
+
 # ================== CLAVE SECRETA PARA SESIONES ==================
 app.secret_key = os.getenv("SECRET_KEY", "supersecretkey")
+
+# ================== BLUEPRINTS ==================
+from controllers.recovery_controller import recovery_bp
+from controllers.auth_controller import auth_bp
+from controllers.user_mgmt_controller import user_bp
+
+app.register_blueprint(recovery_bp)
+app.register_blueprint(auth_bp)
+app.register_blueprint(user_bp)
 
 # ================== FUNCIÓN PARA ENCRIPTAR CONTRASEÑAS ==================
 def hash_password(password):
@@ -34,7 +41,7 @@ def hash_password(password):
 # ================== PROBAR CONEXIÓN MYSQL ==================
 with app.app_context():
     try:
-        cur = mysql.connection.cursor()
+        cur = app.mysql.connection.cursor()
         cur.execute("SELECT 1")
         cur.close()
         print("✅ Conexión a MySQL exitosa.")
@@ -54,7 +61,7 @@ def dashboard():
     }), 200
 
 # ================== RUTA DE LOGOUT (API JSON) ==================
-@app.route('/logout', methods=['POST'])
+@app.route('/session/logout', methods=['POST'])
 def logout():
     session.clear()
     return jsonify({
@@ -66,5 +73,7 @@ def logout():
 if __name__ == '__main__':
     print("Iniciando aplicación Flask...")
     print("🔍 Rutas registradas en Flask:")
-    print(app.url_map)
+    for rule in app.url_map.iter_rules():
+        print(f"{rule} -> métodos: {list(rule.methods)}")
+
     app.run(debug=True)

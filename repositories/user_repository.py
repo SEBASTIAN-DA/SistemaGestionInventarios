@@ -65,3 +65,43 @@ def insert_user(username, password_hash, national_id, full_name, role_id=None, b
         """, (username, password_hash, national_id, full_name))
     current_app.mysql.connection.commit()
     cur.close()
+
+def update_user_db(user_id, data):
+    """
+    Actualiza dinámicamente los campos de un usuario.
+    """
+    cur = current_app.mysql.connection.cursor()
+
+    fields = []
+    values = []
+
+    for key, value in data.items():
+        if key.isidentifier():
+            fields.append(f"{key} = %s")
+            values.append(value)
+
+    if not fields:
+        cur.close()
+        return False
+
+    values.append(user_id)
+    query = f"UPDATE users SET {', '.join(fields)} WHERE id = %s"
+
+    cur.execute(query, tuple(values))
+    current_app.mysql.connection.commit()
+    affected = cur.rowcount
+
+    cur.close()
+    return affected > 0
+
+
+def delete_user_db(user_id):
+    """
+    Elimina un usuario de la base de datos por su ID.
+    """
+    cur = current_app.mysql.connection.cursor()
+    cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
+    current_app.mysql.connection.commit()
+    affected = cur.rowcount
+    cur.close()
+    return affected > 0
