@@ -50,6 +50,15 @@ def logout():
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
+    from flask import session  # asegúrate de tenerlo importado arriba
+
+    # ✅ Solo admin puede registrar
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return jsonify({
+            "success": False,
+            "message": "Acceso denegado. Solo administradores pueden registrar usuarios."
+        }), 403
+
     data = request.get_json(silent=True)
     print("DEBUG - Datos recibidos para registro:", data)
 
@@ -59,12 +68,11 @@ def register():
 
     success, message = register_user(data)
 
-    # Elegir código de estado según el tipo de error
     if success:
         return jsonify({"success": True, "message": message}), 201
     elif "exists" in message.lower():
-        return jsonify({"success": False, "message": message}), 409  # conflicto por duplicado
+        return jsonify({"success": False, "message": message}), 409
     elif "password" in message.lower():
-        return jsonify({"success": False, "message": message}), 422  # error de validación
+        return jsonify({"success": False, "message": message}), 422
     else:
-        return jsonify({"success": False, "message": message}), 400  # error genérico
+        return jsonify({"success": False, "message": message}), 400

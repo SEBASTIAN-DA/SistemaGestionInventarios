@@ -49,7 +49,7 @@ def register_user(data):
     national_id = data['national_id']
     full_name = data['full_name']
     branch_id = data.get('branch_id')  # optional
-    role_id = 1  # default role for new users
+    role_id = data.get('role_id', 3)
 
     personal_data = [username, national_id, full_name]
 

@@ -18,7 +18,7 @@ def recover_password(national_id, new_password):
         return False, "Usuario no encontrado."
 
     # Validar contraseña nueva
-    user_data = [user['full_name'], user['national_id'], user['username'], user['correo']]
+    user_data = [user['full_name'], user['national_id'], user['username'],]
     is_valid, message = is_valid_password(new_password, user_data)
     if not is_valid:
         return False, message
