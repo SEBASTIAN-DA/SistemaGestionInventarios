@@ -3,10 +3,16 @@ from dotenv import load_dotenv
 import bcrypt
 import os
 
+from flask_cors import CORS
+
 # ================== CARGAR VARIABLES DE ENTORNO ==================
 load_dotenv()
 
 app = Flask(__name__)
+
+CORS(app,
+     supports_credentials=True,  # 🔹 Necesario para sesiones/cookies
+     origins=["http://localhost:4200"])
 
 # ================== BLUEPRINTS ==================
 from controllers.recovery_controller import recovery_bp
