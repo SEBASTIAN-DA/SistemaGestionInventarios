@@ -6,6 +6,46 @@ def get_user_by_username(username):
     user = cur.fetchone()
     cur.close()
     return user
+def get_all_users_db():
+    cur = current_app.mysql.connection.cursor()
+    cur.execute("""
+        SELECT 
+            u.id,
+            u.username,
+            u.full_name,
+            u.national_id,
+            u.role_id,
+            r.name AS role,
+            u.branch_id,
+            b.name AS branch_name,
+            u.is_active,
+            u.created_at
+        FROM users u
+        LEFT JOIN roles r ON u.role_id = r.id
+        LEFT JOIN branches b ON u.branch_id = b.id
+        ORDER BY u.id ASC
+    """)
+    rows = cur.fetchall()
+    cur.close()
+
+    users = []
+    for row in rows:
+        users.append({
+            "id": row["id"],
+            "username": row["username"],
+            "full_name": row["full_name"],
+            "national_id": row["national_id"],
+            "role_id": row["role_id"],
+            "role": row["role"],  # viene de roles.name
+            "branch_id": row["branch_id"],
+            "branch_name": row.get("branch_name"),
+            "is_active": bool(row["is_active"]),
+            "created_at": row["created_at"]
+        })
+
+    return users
+
+
 
 def get_user_by_national_id(national_id):
     cur = current_app.mysql.connection.cursor()

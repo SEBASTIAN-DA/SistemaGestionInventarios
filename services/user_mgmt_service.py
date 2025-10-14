@@ -1,4 +1,17 @@
-from repositories.user_repository import update_user_db, delete_user_db
+from repositories.user_repository import (
+    update_user_db,
+    delete_user_db,
+    get_all_users_db
+)
+
+def get_all_users():
+    try:
+        users = get_all_users_db()
+        return True, users
+    except Exception as e:
+        print("ERROR - Fetch users failed:", e)
+        return False, f"Database error: {str(e)}"
+
 
 def update_user(user_id, data):
     try:
@@ -10,6 +23,7 @@ def update_user(user_id, data):
         print("ERROR - Update failed:", e)
         return False, f"Database error: {str(e)}"
 
+
 def delete_user(user_id):
     try:
         deleted = delete_user_db(user_id)
@@ -19,3 +33,4 @@ def delete_user(user_id):
     except Exception as e:
         print("ERROR - Delete failed:", e)
         return False, f"Database error: {str(e)}"
+
