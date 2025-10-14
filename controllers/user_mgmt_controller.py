@@ -11,12 +11,19 @@ user_bp = Blueprint('user_bp', __name__, url_prefix='/user')
 
 
 # ========== GET ALL USERS ==========
-@user_bp.route('s', methods=['GET'])  # /user + s → /users
+@user_bp.route('/s', methods=['GET'])  # /user/s
 def get_all_users():
     if 'user_id' not in session or session.get('role') != 'admin':
         return jsonify({"success": False, "message": "Acceso denegado. Solo administradores pueden ver los usuarios."}), 403
 
-    users = service_get_all_users()
+    users_data = service_get_all_users()
+
+    # Manejar si el servicio devuelve [True, users]
+    if isinstance(users_data, (list, tuple)) and len(users_data) == 2 and isinstance(users_data[1], list):
+        users = users_data[1]
+    else:
+        users = users_data
+
     if users is None:
         return jsonify({"success": False, "message": "Error al obtener los usuarios."}), 500
 

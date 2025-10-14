@@ -1,79 +1,116 @@
 from flask import Flask, request, jsonify, session
 from dotenv import load_dotenv
-import bcrypt
 import os
 from flask_cors import CORS
+from datetime import timedelta
 
 # ================== CARGAR VARIABLES DE ENTORNO ==================
 load_dotenv()
 
 app = Flask(__name__)
 
+# ================== CONFIGURACIÓN DE SESIONES ==================
+app.secret_key = os.getenv("SECRET_KEY", "supersecretkey")
+app.config.update(
+    SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=False,  # False en desarrollo
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_PATH='/'
+)
+
+# ================== CONFIGURACIÓN DE CORS ==================
 CORS(
     app,
     supports_credentials=True,
-    origins=["http://localhost:4200"]
+    origins=["http://localhost:4200"],
+    allow_headers=["Content-Type", "Authorization"],
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 )
 
 # ================== CONFIGURACIÓN BASE DE DATOS ==================
 from config.db_config import init_mysql
 mysql = init_mysql(app)
-
-# 🔹 Adjuntar mysql al app para usar current_app.mysql en los Blueprints
 app.mysql = mysql
 
-# ================== CLAVE SECRETA PARA SESIONES ==================
-app.secret_key = os.getenv("SECRET_KEY", "supersecretkey")
-
 # ================== BLUEPRINTS ==================
-from controllers.recovery_controller import recovery_bp
 from controllers.auth_controller import auth_bp
+from controllers.recovery_controller import recovery_bp
 from controllers.user_mgmt_controller import user_bp
 
-app.register_blueprint(recovery_bp)
 app.register_blueprint(auth_bp)
+app.register_blueprint(recovery_bp)
 app.register_blueprint(user_bp)
 
-# ================== FUNCIÓN PARA ENCRIPTAR CONTRASEÑAS ==================
-def hash_password(password):
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+# ================== MIDDLEWARE MEJORADO ==================
+@app.before_request
+def before_request():
+    # Permitir OPTIONS (CORS preflight)
+    if request.method == 'OPTIONS':
+        return '', 204
 
-# ================== PROBAR CONEXIÓN MYSQL ==================
-with app.app_context():
-    try:
-        cur = app.mysql.connection.cursor()
-        cur.execute("SELECT 1")
-        cur.close()
-        print("✅ Conexión a MySQL exitosa.")
-    except Exception as e:
-        print("❌ Error al conectar con MySQL:", e)
+    # Rutas públicas (exact match)
+    public_routes = [
+        '/login',
+        '/register', 
+        '/logout',
+        '/session/check',
+        '/admin/recover-password'
+    ]
 
-# ================== RUTA DE DASHBOARD (API JSON) ==================
+    # Si es una ruta pública, permitir sin sesión
+    if request.path in public_routes:
+        return
+
+    # Verificar sesión para rutas protegidas
+    if 'user_id' not in session:
+        print(f"🔐 Acceso denegado a {request.path}")
+        print(f"📦 Sesión actual: {dict(session)}")
+        print(f"🔍 User-Agent: {request.headers.get('User-Agent')}")
+        print(f"🔍 Origin: {request.headers.get('Origin')}")
+        return jsonify({"success": False, "message": "Unauthorized - Please login"}), 401
+
+    print(f"✅ Acceso permitido a {request.path} para usuario {session['user_id']}")
+
+# ================== RUTAS PRINCIPALES ==================
+@app.route('/session/check', methods=['GET'])
+def check_session():
+    print(f"🔍 Verificando sesión - Sesión: {dict(session)}")
+    
+    if 'user_id' in session:
+        return jsonify({
+            "success": True,
+            "user": {
+                "id": session['user_id'],
+                "role": session['role'],
+                "username": session.get('username', '')
+            }
+        }), 200
+    else:
+        return jsonify({"success": False, "message": "No active session"}), 401
+
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
     if 'user_id' not in session:
-        return jsonify({"success": False, "message": "Unauthorized access"}), 401
-
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+        
     return jsonify({
         "success": True,
         "user_id": session['user_id'],
-        "role": session['role']
-    }), 200
-
-# ================== RUTA DE LOGOUT (API JSON) ==================
-@app.route('/session/logout', methods=['POST'])
-def logout():
-    session.clear()
-    return jsonify({
-        "success": True,
-        "message": "Session closed successfully"
+        "role": session['role'],
+        "username": session.get('username', '')
     }), 200
 
 # ================== EJECUCIÓN PRINCIPAL ==================
 if __name__ == '__main__':
-    print("Iniciando aplicación Flask...")
-    print("🔍 Rutas registradas en Flask:")
-    for rule in app.url_map.iter_rules():
-        print(f"{rule} -> métodos: {list(rule.methods)}")
-
-    app.run(debug=True)
+    print("\n🚀 Iniciando servidor Flask...")
+    print("🔍 Todas las rutas registradas:")
+    for rule in sorted(app.url_map.iter_rules(), key=lambda r: r.rule):
+        methods = ','.join(sorted(rule.methods - {'OPTIONS', 'HEAD'}))
+        print(f"  {rule.rule} -> {rule.endpoint} [{methods}]")
+    
+    print(f"\n⚙️  Configuración de cookies:")
+    print(f"  - SameSite: {app.config['SESSION_COOKIE_SAMESITE']}")
+    print(f"  - Secure: {app.config['SESSION_COOKIE_SECURE']}")
+    print(f"  - HttpOnly: {app.config['SESSION_COOKIE_HTTPONLY']}")
+    
+app.run(debug=True, host='localhost', port=5000)  # ← Usa localhost, NO 127.0.0.1
