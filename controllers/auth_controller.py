@@ -24,7 +24,7 @@ def login():
             username = user.get('username', username)
 
             if user_id:
-                role_map = {1: "admin", 2: "user", 3: "guest"}
+                role_map = {1: "admin", 2: "cajero", 3: "mesero"}
                 role = role_map.get(role_id, "unassigned")
 
                 # ESTABLECER SESIÓN
