@@ -36,10 +36,12 @@ app.mysql = mysql
 from controllers.auth_controller import auth_bp
 from controllers.recovery_controller import recovery_bp
 from controllers.user_mgmt_controller import user_bp
+from controllers.inventory_controller import inventory_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(recovery_bp)
 app.register_blueprint(user_bp)
+app.register_blueprint(inventory_bp)
 
 # ================== MIDDLEWARE MEJORADO ==================
 @app.before_request
