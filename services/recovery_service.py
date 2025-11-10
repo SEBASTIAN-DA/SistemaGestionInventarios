@@ -17,9 +17,6 @@ def recover_password(national_id, new_password):
     if not user:
         return False, "Usuario no encontrado."
 
-
-    print(f"Usuario encontrado: {user['id']} - {user['full_name']}")  # Debug
-    print(f"Contraseña a validar: {new_password}")  # Debug
     # Validar contraseña nueva
     user_data = [user['full_name'], user['national_id'], user['username'],]
     is_valid, message = is_valid_password(new_password, user_data)
