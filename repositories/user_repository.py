@@ -1,13 +1,13 @@
 from flask import current_app
 
 def get_user_by_username(username):
-    cur = current_app.mysql.connection.cursor()
+    cur = current_app.mysql.connection.cursor(dictionary=True)
     cur.execute("SELECT * FROM users WHERE username = %s", (username,))
     user = cur.fetchone()
     cur.close()
     return user
 def get_all_users_db():
-    cur = current_app.mysql.connection.cursor()
+    cur = current_app.mysql.connection.cursor(dictionary=True)
     cur.execute("""
         SELECT 
             u.id,
@@ -36,7 +36,7 @@ def get_all_users_db():
             "full_name": row["full_name"],
             "national_id": row["national_id"],
             "role_id": row["role_id"],
-            "role": row["role"],  # viene de roles.name
+            "role": row["role"],
             "branch_id": row["branch_id"],
             "branch_name": row.get("branch_name"),
             "is_active": bool(row["is_active"]),
@@ -48,14 +48,14 @@ def get_all_users_db():
 
 
 def get_user_by_national_id(national_id):
-    cur = current_app.mysql.connection.cursor()
+    cur = current_app.mysql.connection.cursor(dictionary=True)
     cur.execute("SELECT * FROM users WHERE national_id = %s", (national_id,))
     user = cur.fetchone()
     cur.close()
     return user
 
 def update_user_password(user_id, new_password_hash):
-    cur = current_app.mysql.connection.cursor()
+    cur = current_app.mysql.connection.cursor(dictionary=True)
     cur.execute("""
         UPDATE users 
         SET password = %s, password_expiration = DATE_ADD(CURRENT_DATE, INTERVAL 90 DAY)
@@ -65,7 +65,7 @@ def update_user_password(user_id, new_password_hash):
     cur.close()
 
 def save_password_to_history(user_id, password_hash):
-    cur = current_app.mysql.connection.cursor()
+    cur = current_app.mysql.connection.cursor(dictionary=True)
     cur.execute("""
         INSERT INTO password_history (user_id, password_hash)
         VALUES (%s, %s)
@@ -74,7 +74,7 @@ def save_password_to_history(user_id, password_hash):
     cur.close()
 
 def get_last_password_hashes(user_id, limit=5):
-    cur = current_app.mysql.connection.cursor()
+    cur = current_app.mysql.connection.cursor(dictionary=True)
     cur.execute("""
         SELECT password_hash 
         FROM password_history 
@@ -87,7 +87,7 @@ def get_last_password_hashes(user_id, limit=5):
     return [row['password_hash'] for row in rows]
 
 def insert_user(username, password_hash, national_id, full_name, role_id=None, branch_id=None):
-    cur = current_app.mysql.connection.cursor()
+    cur = current_app.mysql.connection.cursor(dictionary=True)
     if branch_id is not None and role_id is not None:
         cur.execute("""
             INSERT INTO users (username, password, national_id, full_name, role_id, branch_id)
@@ -110,7 +110,7 @@ def update_user_db(user_id, data):
     """
     Actualiza dinámicamente los campos de un usuario.
     """
-    cur = current_app.mysql.connection.cursor()
+    cur = current_app.mysql.connection.cursor(dictionary=True)
 
     fields = []
     values = []
@@ -139,7 +139,7 @@ def delete_user_db(user_id):
     """
     Elimina un usuario de la base de datos por su ID.
     """
-    cur = current_app.mysql.connection.cursor()
+    cur = current_app.mysql.connection.cursor(dictionary=True)
     cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
     current_app.mysql.connection.commit()
     affected = cur.rowcount

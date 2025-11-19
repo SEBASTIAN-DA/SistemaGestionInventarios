@@ -37,11 +37,15 @@ from controllers.auth_controller import auth_bp
 from controllers.recovery_controller import recovery_bp
 from controllers.user_mgmt_controller import user_bp
 from controllers.inventory_controller import inventory_bp
+from controllers.order_controller import order_bp
+from controllers.table_controller import tables_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(recovery_bp)
 app.register_blueprint(user_bp)
 app.register_blueprint(inventory_bp)
+app.register_blueprint(order_bp)
+app.register_blueprint(tables_bp)
 
 # ================== MIDDLEWARE MEJORADO ==================
 @app.before_request
@@ -115,4 +119,4 @@ if __name__ == '__main__':
     print(f"  - Secure: {app.config['SESSION_COOKIE_SECURE']}")
     print(f"  - HttpOnly: {app.config['SESSION_COOKIE_HTTPONLY']}")
     
-app.run(debug=True, host='localhost', port=5000)  # ← Usa localhost, NO 127.0.0.1
+app.run(debug=True, host='localhost', port=5000) 
