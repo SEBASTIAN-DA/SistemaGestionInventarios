@@ -39,6 +39,9 @@ from controllers.user_mgmt_controller import user_bp
 from controllers.inventory_controller import inventory_bp
 from controllers.order_controller import order_bp
 from controllers.table_controller import tables_bp
+from controllers.branch_controller import branch_bp
+from controllers.sales_report_controller import sales_report_bp
+
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(recovery_bp)
@@ -46,6 +49,8 @@ app.register_blueprint(user_bp)
 app.register_blueprint(inventory_bp)
 app.register_blueprint(order_bp)
 app.register_blueprint(tables_bp)
+app.register_blueprint(branch_bp)
+app.register_blueprint(sales_report_bp)
 
 # ================== MIDDLEWARE MEJORADO ==================
 @app.before_request
