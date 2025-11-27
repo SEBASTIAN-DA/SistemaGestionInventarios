@@ -16,14 +16,18 @@ def create_order():
     table_id = data.get('table_id')
     waiter_id = data.get('waiter_id')
 
+    print(f"📋 Creando pedido - table_id: {table_id}, waiter_id: {waiter_id}")
+
     if not table_id or not waiter_id:
         return jsonify({"success": False, "message": "table_id and waiter_id are required"}), 400
 
     service = _make_service()
     try:
+        # ✅ Usar take_order que maneja tanto mesas disponibles como ocupadas
         res = service.take_order(table_id, waiter_id)
         return jsonify({"success": True, "data": res}), 200
     except ValueError as e:
+        print(f"❌ Error al crear pedido: {str(e)}")
         return jsonify({"success": False, "message": str(e)}), 400
 
 @order_bp.route('/add-product', methods=['POST'])
@@ -86,3 +90,68 @@ def pay():
         return jsonify({"success": False, "message": str(e)}), 400
 
 
+@order_bp.route('/<int:order_id>', methods=['GET'])
+def get_order(order_id):
+    service = _make_service()
+    try:
+        res = service.get_order_by_id(order_id)
+        return jsonify({"success": True, "data": res}), 200
+    except ValueError as e:
+        return jsonify({"success": False, "message": str(e)}), 404
+
+@order_bp.route('/table/<int:table_id>', methods=['GET'])
+def get_orders_by_table(table_id):
+    service = _make_service()
+    try:
+        res = service.get_orders_by_table(table_id)
+        return jsonify({"success": True, "data": res}), 200
+    except ValueError as e:
+        return jsonify({"success": False, "message": str(e)}), 404
+
+@order_bp.route('/active', methods=['GET'])
+def get_active_orders():
+    service = _make_service()
+    try:
+        res = service.get_active_orders()
+        return jsonify({"success": True, "data": res}), 200
+    except ValueError as e:
+        return jsonify({"success": False, "message": str(e)}), 400
+
+@order_bp.route('/', methods=['GET'])
+def get_all_orders():
+    service = _make_service()
+    try:
+        res = service.get_all_orders()
+        return jsonify({"success": True, "data": res}), 200
+    except ValueError as e:
+        return jsonify({"success": False, "message": str(e)}), 400
+
+@order_bp.route('/close', methods=['POST'])
+def close_order():
+    data = request.json or {}
+    order_id = data.get('order_id')
+    
+    if not order_id:
+        return jsonify({"success": False, "message": "order_id is required"}), 400
+
+    service = _make_service()
+    try:
+        res = service.close_order(order_id)
+        return jsonify({"success": True, "data": res}), 200
+    except ValueError as e:
+        return jsonify({"success": False, "message": str(e)}), 400
+
+@order_bp.route('/confirm', methods=['POST'])
+def confirm_order():
+    data = request.json or {}
+    order_id = data.get('order_id')
+    
+    if not order_id:
+        return jsonify({"success": False, "message": "order_id is required"}), 400
+
+    service = _make_service()
+    try:
+        res = service.confirm_order(order_id)
+        return jsonify({"success": True, "data": res}), 200
+    except ValueError as e:
+        return jsonify({"success": False, "message": str(e)}), 400

@@ -6,14 +6,16 @@ from services.order_service import OrderService
 
 tables_bp = Blueprint('tables', __name__, url_prefix='/tables')
 
-
 @tables_bp.route('/take', methods=['POST'])
 def take_table():
     data = request.json or {}
     table_id = data.get('table_id')
     waiter_id = data.get('waiter_id')
 
+    print(f"📋 Recibiendo solicitud para tomar mesa - table_id: {table_id}, waiter_id: {waiter_id}")
+
     if not table_id or not waiter_id:
+        print("❌ Faltan parámetros requeridos")
         return jsonify({
             "success": False,
             "message": "table_id and waiter_id are required"
@@ -22,26 +24,15 @@ def take_table():
     table_repo = TableRepository(current_app.mysql)
     order_repo = OrderRepository(current_app.mysql)
 
-    table_service = TableService(table_repo)
     order_service = OrderService(order_repo, table_repo)
 
     try:
-        current_status = table_service.get_table_status(table_id)
-
-        # ✅ Si ya está ocupada, devuelvo pedido activo
-        if current_status == "OCCUPIED":
-            order = order_service.get_active_order_by_table(table_id)
-            return jsonify({
-                "success": True,
-                "message": "Mesa ya ocupada. Pedido activo retornado.",
-                "data": order
-            }), 200
-
-        # ✅ Tomar mesa
-        table_service.take_table(table_id, waiter_id)
-
-        # ✅ Crear pedido automático
+        print(f"🟡 Intentando crear pedido para mesa {table_id} con mesero {waiter_id}")
+        
+        # ✅ SOLO llamar a order_service.take_order - esto maneja todo
         order = order_service.take_order(table_id, waiter_id)
+        
+        print(f"✅ Pedido creado exitosamente: {order}")
 
         return jsonify({
             "success": True,
@@ -50,8 +41,14 @@ def take_table():
         }), 200
 
     except ValueError as e:
+        print(f"❌ Error de valor: {str(e)}")
         return jsonify({"success": False, "message": str(e)}), 400
-
+    except Exception as e:
+        print(f"❌ ERROR INTERNO DEL SERVIDOR: {str(e)}")
+        import traceback
+        print("📝 Stack trace completo:")
+        traceback.print_exc()
+        return jsonify({"success": False, "message": "Internal server error"}), 500
 
 # ✅ NUEVO ENDPOINT: algoritmo voraz para asignar mesa automáticamente
 @tables_bp.route('/assign', methods=['POST'])
@@ -86,7 +83,6 @@ def assign_table():
             "message": str(e)
         }), 400
 
-
 @tables_bp.route('/release', methods=['POST'])
 def release_table():
     data = request.json or {}
@@ -103,7 +99,6 @@ def release_table():
         return jsonify({"success": True, "data": res}), 200
     except ValueError as e:
         return jsonify({"success": False, "message": str(e)}), 400
-
 
 @tables_bp.route('/', methods=['GET'])
 def list_tables():

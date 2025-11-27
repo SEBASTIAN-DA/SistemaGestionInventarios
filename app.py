@@ -4,6 +4,7 @@ import os
 from flask_cors import CORS
 from datetime import timedelta
 
+
 # ================== CARGAR VARIABLES DE ENTORNO ==================
 load_dotenv()
 
@@ -41,6 +42,8 @@ from controllers.order_controller import order_bp
 from controllers.table_controller import tables_bp
 from controllers.branch_controller import branch_bp
 from controllers.sales_report_controller import sales_report_bp
+from controllers.product_controller import product_bp
+from controllers.payment_controller import payment_bp
 
 
 app.register_blueprint(auth_bp)
@@ -51,6 +54,8 @@ app.register_blueprint(order_bp)
 app.register_blueprint(tables_bp)
 app.register_blueprint(branch_bp)
 app.register_blueprint(sales_report_bp)
+app.register_blueprint(product_bp)
+app.register_blueprint(payment_bp)
 
 # ================== MIDDLEWARE MEJORADO ==================
 @app.before_request

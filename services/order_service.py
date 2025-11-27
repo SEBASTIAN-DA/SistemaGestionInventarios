@@ -8,46 +8,71 @@ class OrderService:
 
     # ===================== CREAR O TOMAR PEDIDO =====================
     def take_order(self, table_id, waiter_id):
+        """Crear un nuevo pedido y marcar la mesa como ocupada"""
+        print(f"🟡 OrderService.take_order - table_id: {table_id}, waiter_id: {waiter_id}")
+        
         cursor = self.order_repo.mysql.connection.cursor(dictionary=True)
 
-        cursor.execute("SELECT * FROM restaurant_tables WHERE id=%s", (table_id,))
-        table = cursor.fetchone()
-        if not table:
-            raise ValueError("Table not found")
+        try:
+            print(f"🔍 Verificando mesa {table_id}...")
+            cursor.execute("SELECT * FROM restaurant_tables WHERE id=%s", (table_id,))
+            table = cursor.fetchone()
+            
+            if not table:
+                print(f"❌ Mesa {table_id} no encontrada")
+                raise ValueError("Table not found")
 
-        if table['status'] == 'occupied':
+            print(f"📊 Estado de la mesa {table_id}: {table['status']}")
+
+            if table['status'] == 'occupied':
+                print(f"🔄 Mesa {table_id} ya está ocupada, buscando pedido activo...")
+                cursor.execute(
+                    "SELECT * FROM orders WHERE table_id=%s AND status IN ('open','confirmed')",
+                    (table_id,)
+                )
+                order = cursor.fetchone()
+                cursor.close()
+                
+                if order:
+                    print(f"✅ Pedido activo encontrado: {order['id']}")
+                    return order
+                else:
+                    print(f"⚠️ Mesa ocupada pero sin pedido activo")
+                    raise ValueError("Table occupied but no active order found")
+
+            print(f"🟡 Creando nuevo pedido para mesa {table_id}...")
             cursor.execute(
-                "SELECT * FROM orders WHERE table_id=%s AND status IN ('OPEN','CONFIRMED')",
+                "INSERT INTO orders (table_id, waiter_id, total, status, created_at) "
+                "VALUES (%s, %s, %s, 'open', NOW())",
+                (table_id, waiter_id, 0)
+            )
+            order_id = cursor.lastrowid
+            print(f"✅ Pedido creado con ID: {order_id}")
+
+            print(f"🟡 Marcando mesa {table_id} como ocupada...")
+            cursor.execute(
+                "UPDATE restaurant_tables SET status='occupied' WHERE id=%s",
                 (table_id,)
             )
-            order = cursor.fetchone()
+
+            self.order_repo.mysql.connection.commit()
+            print(f"✅ Transacción completada - Pedido {order_id} creado y mesa ocupada")
+
             cursor.close()
-            if order:
-                return order
-            else:
-                raise ValueError("Table occupied but no active order found")
 
-        cursor.execute(
-            "INSERT INTO orders (table_id, waiter_id, total, status, created_at) "
-            "VALUES (%s, %s, %s, 'OPEN', NOW())",
-            (table_id, waiter_id, 0)
-        )
-        order_id = cursor.lastrowid
+            return {
+                "order_id": order_id,
+                "table_id": table_id,
+                "waiter_id": waiter_id,
+                "status": "open"
+            }
 
-        cursor.execute(
-            "UPDATE restaurant_tables SET status='occupied' WHERE id=%s",
-            (table_id,)
-        )
-
-        self.order_repo.mysql.connection.commit()
-        cursor.close()
-
-        return {
-            "order_id": order_id,
-            "table_id": table_id,
-            "waiter_id": waiter_id,
-            "status": "OPEN"
-        }
+        except Exception as e:
+            print(f"❌ Error en take_order: {str(e)}")
+            # Asegurarse de cerrar el cursor en caso de error
+            if cursor:
+                cursor.close()
+            raise e
 
     # ===================== AGREGAR PRODUCTO =====================
     def add_product_to_order(self, order_id, product_id, quantity):
@@ -59,7 +84,7 @@ class OrderService:
         if not order:
             raise ValueError("Order not found")
 
-        if order['status'] != 'OPEN':
+        if order['status'] != 'open':
             raise ValueError("Order cannot be modified. Must create a new order.")
 
         cursor.execute(
@@ -117,7 +142,7 @@ class OrderService:
         if not detail:
             raise ValueError("Order detail not found")
 
-        if detail['status'] != 'OPEN':
+        if detail['status'] != 'open':
             raise ValueError("El pedido no puede modificarse. Debe registrar un nuevo pedido.")
 
         cursor.execute(
@@ -170,25 +195,25 @@ class OrderService:
         if not order:
             raise ValueError("Order not found")
 
-        if order['status'] != 'OPEN':
+        if order['status'] != 'open':
             raise ValueError("Order cannot be confirmed")
 
         cursor.execute(
-            "UPDATE orders SET status='CONFIRMED' WHERE id=%s",
+            "UPDATE orders SET status='confirmed' WHERE id=%s",
             (order_id,)
         )
 
         self.order_repo.mysql.connection.commit()
         cursor.close()
 
-        return {"order_id": order_id, "status": "CONFIRMED"}
+        return {"order_id": order_id, "status": "confirmed"}
 
     # ===================== PAGAR PEDIDO =====================
     def pay_order(self, order_id, cashier_id, payment_method='cash'):
         cursor = self.order_repo.mysql.connection.cursor(dictionary=True)
 
         cursor.execute(
-            "SELECT * FROM orders WHERE id=%s AND status IN ('OPEN','CONFIRMED')",
+            "SELECT * FROM orders WHERE id=%s AND status IN ('open','confirmed')",
             (order_id,)
         )
         order = cursor.fetchone()
@@ -202,7 +227,7 @@ class OrderService:
             (order_id, cashier_id, payment_method, order['total'])
         )
 
-        cursor.execute("UPDATE orders SET status='CLOSED' WHERE id=%s", (order_id,))
+        cursor.execute("UPDATE orders SET status='closed' WHERE id=%s", (order_id,))
         cursor.execute(
             "UPDATE restaurant_tables SET status='available' WHERE id=%s",
             (order['table_id'],)
@@ -214,7 +239,7 @@ class OrderService:
         return {
             "order_id": order_id,
             "total": order['total'],
-            "status": "CLOSED"
+            "status": "closed"
         }
 
     # ===================== ALGORITMO MOCHILA (NUEVO) =====================
@@ -260,4 +285,134 @@ class OrderService:
             "budget": budget,
             "total": dp[n][W],
             "products": result
+        }
+
+    # ===================== MÉTODOS ADICIONALES (para los nuevos endpoints) =====================
+    
+    def get_order_by_id(self, order_id):
+        cursor = self.order_repo.mysql.connection.cursor(dictionary=True)
+        
+        # Obtener información básica del pedido
+        cursor.execute("""
+            SELECT o.*, rt.table_number 
+            FROM orders o 
+            LEFT JOIN restaurant_tables rt ON o.table_id = rt.id 
+            WHERE o.id=%s
+        """, (order_id,))
+        order = cursor.fetchone()
+        
+        if not order:
+            cursor.close()
+            raise ValueError("Order not found")
+        
+        # Obtener los items del pedido
+        cursor.execute("""
+            SELECT od.*, p.name as product_name 
+            FROM order_details od 
+            JOIN products p ON od.product_id = p.id 
+            WHERE od.order_id=%s
+        """, (order_id,))
+        items = cursor.fetchall()
+        
+        cursor.close()
+        
+        order['items'] = items
+        return order
+
+    def get_orders_by_table(self, table_id):
+        cursor = self.order_repo.mysql.connection.cursor(dictionary=True)
+        
+        cursor.execute("""
+            SELECT o.*, rt.table_number 
+            FROM orders o 
+            LEFT JOIN restaurant_tables rt ON o.table_id = rt.id 
+            WHERE o.table_id=%s 
+            ORDER BY o.created_at DESC
+        """, (table_id,))
+        orders = cursor.fetchall()
+        
+        # Para cada orden, obtener sus items
+        for order in orders:
+            cursor.execute("""
+                SELECT od.*, p.name as product_name 
+                FROM order_details od 
+                JOIN products p ON od.product_id = p.id 
+                WHERE od.order_id=%s
+            """, (order['id'],))
+            order['items'] = cursor.fetchall()
+        
+        cursor.close()
+        return orders
+
+    def get_active_orders(self):
+        cursor = self.order_repo.mysql.connection.cursor(dictionary=True)
+        
+        cursor.execute("""
+            SELECT o.*, rt.table_number 
+            FROM orders o 
+            LEFT JOIN restaurant_tables rt ON o.table_id = rt.id 
+            WHERE o.status IN ('open','confirmed') 
+            ORDER BY o.created_at DESC
+        """)
+        orders = cursor.fetchall()
+        
+        for order in orders:
+            cursor.execute("""
+                SELECT od.*, p.name as product_name 
+                FROM order_details od 
+                JOIN products p ON od.product_id = p.id 
+                WHERE od.order_id=%s
+            """, (order['id'],))
+            order['items'] = cursor.fetchall()
+        
+        cursor.close()
+        return orders
+
+    def get_all_orders(self):
+        cursor = self.order_repo.mysql.connection.cursor(dictionary=True)
+        
+        cursor.execute("""
+            SELECT o.*, rt.table_number 
+            FROM orders o 
+            LEFT JOIN restaurant_tables rt ON o.table_id = rt.id 
+            ORDER BY o.created_at DESC
+        """)
+        orders = cursor.fetchall()
+        
+        for order in orders:
+            cursor.execute("""
+                SELECT od.*, p.name as product_name 
+                FROM order_details od 
+                JOIN products p ON od.product_id = p.id 
+                WHERE od.order_id=%s
+            """, (order['id'],))
+            order['items'] = cursor.fetchall()
+        
+        cursor.close()
+        return orders
+
+    def close_order(self, order_id):
+        cursor = self.order_repo.mysql.connection.cursor(dictionary=True)
+
+        cursor.execute(
+            "SELECT * FROM orders WHERE id=%s AND status IN ('open','confirmed')",
+            (order_id,)
+        )
+        order = cursor.fetchone()
+
+        if not order:
+            raise ValueError("Order not found or already closed")
+
+        cursor.execute("UPDATE orders SET status='closed' WHERE id=%s", (order_id,))
+        cursor.execute(
+            "UPDATE restaurant_tables SET status='available' WHERE id=%s",
+            (order['table_id'],)
+        )
+
+        self.order_repo.mysql.connection.commit()
+        cursor.close()
+
+        return {
+            "order_id": order_id,
+            "status": "closed"
         }
