@@ -2,7 +2,8 @@ from flask import Blueprint, request, jsonify, session
 from services.user_mgmt_service import (
     update_user as service_update_user,
     delete_user as service_delete_user,
-    get_all_users as service_get_all_users  # <- nuevo import
+    get_all_users as service_get_all_users,  # <- nuevo import
+    get_user_by_id as service_get_user_by_id 
 )
 
 print("User controller cargado correctamente")
@@ -30,6 +31,28 @@ def get_all_users():
     return jsonify(users), 200
 
 
+# ========== GET CURRENT USER PROFILE ==========
+@user_bp.route('/profile', methods=['GET'])
+def get_current_user_profile():
+    # Verificar que el usuario esté autenticado (cualquier rol)
+    if 'user_id' not in session:
+        return jsonify({"success": False, "message": "Acceso denegado. Debe iniciar sesión."}), 401
+    
+    # Obtener el ID del usuario actual desde la sesión
+    current_user_id = session.get('user_id')
+    
+    # Importar aquí para evitar circular imports
+    from services.user_mgmt_service import get_user_by_id
+    
+    # Obtener los datos completos del usuario
+    user_data = get_user_by_id(current_user_id)
+    
+    if not user_data:
+        return jsonify({"success": False, "message": "Usuario no encontrado."}), 404
+    
+    return jsonify(user_data), 200
+
+
 # ========== UPDATE USER ==========
 @user_bp.route('/<int:user_id>', methods=['PUT'])
 def update_user(user_id):
@@ -54,3 +77,4 @@ def delete_user(user_id):
     success, message = service_delete_user(user_id)
     status_code = 200 if success else 400
     return jsonify({"success": success, "message": message}), status_code
+

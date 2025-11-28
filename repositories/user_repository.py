@@ -44,7 +44,38 @@ def get_all_users_db():
         })
 
     return users
-
+def get_user_by_id_db(user_id):
+    """
+    Obtiene un usuario por su ID con toda la información completa
+    """
+    try:
+        cur = current_app.mysql.connection.cursor(dictionary=True)
+        cur.execute("""
+            SELECT 
+                u.id,
+                u.username,
+                u.full_name,
+                u.national_id,
+                u.role_id,
+                r.name AS role,
+                u.branch_id,
+                b.name AS branch_name,
+                u.is_active,
+                u.created_at,
+                u.password_expiration
+            FROM users u
+            LEFT JOIN roles r ON u.role_id = r.id
+            LEFT JOIN branches b ON u.branch_id = b.id
+            WHERE u.id = %s
+        """, (user_id,))
+        
+        user = cur.fetchone()
+        cur.close()
+        return user
+        
+    except Exception as e:
+        print(f"Error obteniendo usuario por ID: {e}")
+        return None
 
 
 def get_user_by_national_id(national_id):
