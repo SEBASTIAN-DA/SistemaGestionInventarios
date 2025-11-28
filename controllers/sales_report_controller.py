@@ -11,7 +11,7 @@ def get_sales_report():
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
-        branch_id = request.args.get('branch_id')
+        branch_id = request.args.get('branch_id', type=int)  # ✅ Convertir a int
 
         if not start_date or not end_date:
             return jsonify({
@@ -19,9 +19,23 @@ def get_sales_report():
                 "message": "start_date and end_date are required"
             }), 400
 
-        # Si no es admin, forzar su sede
-        if session.get("role") != "admin":
-            branch_id = session.get("branch_id")
+        print(f"📊 Generando reporte: {start_date} a {end_date}, branch_id: {branch_id}")
+        print(f"👤 Usuario: {session.get('user_id')}, Rol: {session.get('role')}")
+
+        # ✅ CORREGIDO: Manejo correcto de branch_id para admin vs otros roles
+        user_role = session.get("role")
+        user_branch_id = session.get("branch_id")
+        
+        # Si NO es admin y tiene branch_id, forzar su sede
+        if user_role != "admin" and user_branch_id:
+            branch_id = user_branch_id
+            print(f"🔒 Usuario no admin, forzando branch_id: {branch_id}")
+        # Si es admin y no se especificó branch_id, mostrar todas las sedes (branch_id=None)
+        elif user_role == "admin" and branch_id is None:
+            print("👑 Admin viendo todas las sedes")
+        # Si es admin y se especificó branch_id, usar el especificado
+        elif user_role == "admin" and branch_id is not None:
+            print(f"👑 Admin filtrando por sede: {branch_id}")
 
         repo = SalesReportRepository(current_app.mysql)
         data = repo.get_sales_report(start_date, end_date, branch_id)
@@ -29,17 +43,21 @@ def get_sales_report():
         return jsonify({
             "success": True,
             "algorithm": "Greedy - Ordenado por mayor ganancia",
+            "filters": {
+                "start_date": start_date,
+                "end_date": end_date,
+                "branch_id": branch_id
+            },
             "count": len(data),
             "data": data
         }), 200
 
     except Exception as e:
+        print(f"❌ Error en reporte de ventas: {str(e)}")
         return jsonify({
             "success": False,
-            "message": str(e)
+            "message": f"Error generating report: {str(e)}"
         }), 500
-
-
 # ✅ NUEVO: Exportar a Excel
 @sales_report_bp.route('/sales/excel', methods=['GET'])
 def export_sales_excel():

@@ -6,8 +6,8 @@ from repositories.inventory_repository import (
     delete_product
 )
 
-def list_products():
-    return get_all_products()
+def list_products(branch_id=None):
+    return get_all_products(branch_id)
 
 def create_product(data):
     required_fields = ["code", "name", "category", "cost_price", "sale_price", "branch_id"]

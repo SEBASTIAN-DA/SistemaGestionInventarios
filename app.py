@@ -46,6 +46,7 @@ from controllers.product_controller import product_bp
 from controllers.payment_controller import payment_bp
 
 
+
 app.register_blueprint(auth_bp)
 app.register_blueprint(recovery_bp)
 app.register_blueprint(user_bp)
@@ -56,6 +57,8 @@ app.register_blueprint(branch_bp)
 app.register_blueprint(sales_report_bp)
 app.register_blueprint(product_bp)
 app.register_blueprint(payment_bp)
+
+
 
 # ================== MIDDLEWARE MEJORADO ==================
 @app.before_request

@@ -104,6 +104,9 @@ def release_table():
 def list_tables():
     repo = TableRepository(current_app.mysql)
     service = TableService(repo)
-
-    tables = service.get_all_tables()
+    
+    # ✅ Obtener branch_id del query parameter
+    branch_id = request.args.get('branch_id', type=int)
+    
+    tables = service.get_all_tables(branch_id)
     return jsonify({"success": True, "data": tables}), 200

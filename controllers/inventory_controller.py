@@ -1,24 +1,11 @@
 from flask import Blueprint, request, jsonify, session
 from services.inventory_service import (
-    list_products,
     create_product,
     update_product_info,
     remove_product
 )
 
 inventory_bp = Blueprint('inventory_bp', __name__)
-
-# =========================
-# GET - Listar productos
-# =========================
-@inventory_bp.route('/inventory/products', methods=['GET'])
-def get_products():
-    if 'user_id' not in session:
-        return jsonify({"success": False, "message": "Debes iniciar sesión."}), 401
-
-    products = list_products()
-    return jsonify({"success": True, "data": products}), 200
-
 
 # =========================
 # POST - Agregar producto (solo admin o cajero)
@@ -39,7 +26,6 @@ def add_product():
     status_code = 200 if success else 400
     return jsonify({"success": success, "message": message}), status_code
 
-
 # =========================
 # PUT - Editar producto (solo admin o cajero)
 # =========================
@@ -58,7 +44,6 @@ def edit_product(product_id):
     success, message = update_product_info(product_id, data)
     status_code = 200 if success else 400
     return jsonify({"success": success, "message": message}), status_code
-
 
 # =========================
 # DELETE - Eliminar producto (solo admin o cajero)

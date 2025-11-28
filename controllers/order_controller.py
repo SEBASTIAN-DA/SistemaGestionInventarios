@@ -108,14 +108,28 @@ def get_orders_by_table(table_id):
     except ValueError as e:
         return jsonify({"success": False, "message": str(e)}), 404
 
+# En tu orders_bp.py o donde tengas el endpoint de pedidos activos
 @order_bp.route('/active', methods=['GET'])
 def get_active_orders():
-    service = _make_service()
     try:
-        res = service.get_active_orders()
-        return jsonify({"success": True, "data": res}), 200
-    except ValueError as e:
-        return jsonify({"success": False, "message": str(e)}), 400
+        # ✅ Obtener branch_id del query parameter
+        branch_id = request.args.get('branch_id', type=int)
+        print(f"🏢 Backend recibió branch_id para pedidos activos: {branch_id}")
+        
+        order_repo = OrderRepository(current_app.mysql)
+        orders = order_repo.get_active_orders(branch_id)  # Pasar branch_id al repositorio
+        
+        return jsonify({
+            "success": True,
+            "data": orders
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Error obteniendo pedidos activos: {e}")
+        return jsonify({
+            "success": False,
+            "message": "Error interno del servidor"
+        }), 500
 
 @order_bp.route('/', methods=['GET'])
 def get_all_orders():

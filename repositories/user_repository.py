@@ -44,6 +44,21 @@ def get_all_users_db():
         })
 
     return users
+def get_branch_info(branch_id):
+    """
+    Obtiene información de una sede por su ID
+    """
+    try:
+        cur = current_app.mysql.connection.cursor(dictionary=True)
+        cur.execute("SELECT id, name, address FROM branches WHERE id = %s", (branch_id,))
+        branch = cur.fetchone()
+        cur.close()
+        return branch
+    except Exception as e:
+        print(f"Error obteniendo información de sede: {e}")
+        return None
+
+
 def get_user_by_id_db(user_id):
     """
     Obtiene un usuario por su ID con toda la información completa
